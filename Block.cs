@@ -1812,6 +1812,9 @@ namespace MCForge
                 case door_book_air: return door_book;
                 case door_cobblestone_air: return door_cobblestone;
                 case door_red_air: return door_red;
+                
+                case snow: return grass;
+                case fallsnow: return air;
 
                 case odoor1_air:
                 case odoor2_air:
