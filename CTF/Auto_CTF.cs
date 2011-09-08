@@ -211,8 +211,6 @@ namespace MCForge
         }
         void Player_PlayerBlockChange(Player p, ushort x, ushort y, ushort z, byte type)
         {
-            Server.s.Log(blueteam.color);
-            Server.s.Log(redteam.color);
             if (p.level == mainlevel && !blueteam.members.Contains(p) && !redteam.members.Contains(p))
             {
                 p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
