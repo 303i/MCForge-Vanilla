@@ -27,6 +27,7 @@ namespace MCForge.Plugins
         PlayerCommand,
         PlayerChat,
         BlockChange,
+        LevelUnload,
         LevelLoad,
         LevelSave,
         PlayerMove

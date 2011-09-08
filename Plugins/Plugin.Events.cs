@@ -26,12 +26,12 @@ namespace MCForge.Plugins
 	{
 
         /// <summary>
-        /// Check to see if an event is stopped
+        /// Check to see if a player event is stopped
         /// </summary>
         /// <param name="e">The event to check</param>
-        /// <param name="p">The Player that event is related to (null if not dealing with player event)</param>
+        /// <param name="p">The Player that event is related to</param>
         /// <returns>This returns true or false, true means its stopped, false means its not</returns>
-        public static bool IsEventCancled(Events e, Player p)
+        public static bool IsPlayerEventCancled(Events e, Player p)
         {
             switch (e)
             {
@@ -48,11 +48,52 @@ namespace MCForge.Plugins
             }
         }
         /// <summary>
-        /// Cancel a server event
+        /// Cancel a global Level Event!
+        /// Events.LevelLoad
+        /// Events.LevelSave
         /// </summary>
         /// <param name="e">The event that you want to cancel</param>
-        /// <param name="p">The Player that event is related to (null if not dealing with player event)</param>
-        public static void CancelEvent(Events e, Player p) {
+        public static void CancelGlobalLevelEvent(Events e)
+        {
+            switch (e)
+            {
+                case Events.LevelLoad:
+                    Level.cancelload = true;
+                    break;
+                case Events.LevelSave:
+                    Level.cancelsave = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        /// <summary>
+        /// Cancel a Level Event
+        /// Events.LevelUnload
+        /// </summary>
+        /// <param name="e">The event you want to cancel</param>
+        /// <param name="l">The level the event is related to</param>
+        public static void CancelLevelEvent(Events e, Level l)
+        {
+            switch (e)
+            {
+                case Events.LevelUnload:
+                    l.cancelunload = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        /// <summary>
+        /// Cancel a Player event
+        /// Events.BlockChange
+        /// Events.PlayerChat
+        /// Events.PlayerCommand
+        /// Events.PlayerMove
+        /// </summary>
+        /// <param name="e">The event that you want to cancel</param>
+        /// <param name="p">The Player that event is related to</param>
+        public static void CancelPlayerEvent(Events e, Player p) {
             //TODO
             //Add some more events to be canceled
             switch (e)

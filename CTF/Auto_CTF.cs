@@ -154,6 +154,17 @@ namespace MCForge
             Player.PlayerChat += new Player.OnPlayerChat(Player_PlayerChat);
             Player.PlayerCommand += new Player.OnPlayerCommand(Player_PlayerCommand);
             Player.PlayerBlockChange += new Player.BlockchangeEventHandler2(Player_PlayerBlockChange);
+            mainlevel.LevelUnload += new Level.OnLevelUnload(mainlevel_LevelUnload);
+        }
+
+        void mainlevel_LevelUnload(Level l)
+        {
+            if (started)
+            {
+                Server.s.Log("Failed!, A ctf game is curretnly going on!");
+                Plugins.Plugin.CancelLevelEvent(Plugins.Events.LevelUnload, l);
+            }
+
         }
         public void Start()
         {
@@ -215,7 +226,7 @@ namespace MCForge
             {
                 p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
                 Player.SendMessage(p, "You are not on a team!");
-                Plugins.Plugin.CancelEvent(Plugins.Events.BlockChange, p);
+                Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
             }
             if (p.level == mainlevel && blueteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
             {
@@ -238,13 +249,13 @@ namespace MCForge
                     blueteam.points++;
                     mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelEvent(Plugins.Events.BlockChange, p);
+                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
                 }
                 else
                 {
                     Player.SendMessage(p, "You cant take your own flag!");
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelEvent(Plugins.Events.BlockChange, p);
+                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
                 }
             }
             if (p.level == mainlevel && redteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
@@ -258,13 +269,13 @@ namespace MCForge
                     redteam.points++;
                     mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelEvent(Plugins.Events.BlockChange, p);
+                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
                 }
                 else
                 {
                     Player.SendMessage(p, "You cant take your own flag!");
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelEvent(Plugins.Events.BlockChange, p);
+                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
                 }
             }
         }
@@ -294,7 +305,7 @@ namespace MCForge
                         Player.SendMessage(d.p, "You are now chatting with your team!");
                         d.chatting = !d.chatting;
                     }
-                    Plugins.Plugin.CancelEvent(Plugins.Events.PlayerCommand, p);
+                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerCommand, p);
                 }
             }
             if (cmd == "goto")
@@ -360,7 +371,7 @@ namespace MCForge
                             if (blueteam.members.Contains(p1))
                                 Player.SendMessage(p1, blueteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.Parse("white") + message);
                         });
-                        Plugins.Plugin.CancelEvent(Plugins.Events.PlayerChat, p);
+                        Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerChat, p);
                     }
                     if (redteam.members.Contains(p))
                     {
@@ -369,7 +380,7 @@ namespace MCForge
                             if (redteam.members.Contains(p1))
                                 Player.SendMessage(p1, redteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.white + message);
                         });
-                        Plugins.Plugin.CancelEvent(Plugins.Events.PlayerChat, p);
+                        Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerChat, p);
                     }
                 }
             }
