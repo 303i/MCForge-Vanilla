@@ -825,6 +825,9 @@ processThread.Start();
                     Gui.Window.thisWindow.UnloadedlistUpdate();
                 }
                 catch { }
+                //TODO Add GUI button to start or something
+                //DEBUG MUST REMOVE BEFORE RELEASE!!!!
+                Auto_CTF ctf = new Auto_CTF();
                 Log("Finished setting up server");
             });
             if (startZombieModeOnStartup)

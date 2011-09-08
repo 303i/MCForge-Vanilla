@@ -188,8 +188,11 @@ namespace MCForge
         public void Stop(Level l)
         {
             started = false;
-            t.Abort();
-            t.Join();
+            if (t != null)
+            {
+                t.Abort();
+                t.Join();
+            }
             Replace("fallsnow air", l);
             Replace("snow grass", l);
         }

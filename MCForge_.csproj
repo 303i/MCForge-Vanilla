@@ -57,6 +57,9 @@
   <PropertyGroup />
   <PropertyGroup />
   <ItemGroup>
+    <Reference Include="Meebey.SmartIrc4net">
+      <HintPath>..\4.0\trunk\Starter\bin\Debug\Meebey.SmartIrc4net.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="Sharkbite.Thresher">
