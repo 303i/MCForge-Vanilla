@@ -211,7 +211,7 @@ namespace MCForge
                             {
                                 redbase.x = x; redbase.y = y; redbase.z = z;
                             }
-                            else if (mainlevel.GetTile(x, y, z) == Block.blue)
+                            else if (mainlevel.GetTile(x, y, z) == Block.blue || mainlevel.GetTile(x, y, z) == Block.cyan)
                             {
                                 bluebase.x = x; bluebase.y = y; bluebase.z = z;
                             }

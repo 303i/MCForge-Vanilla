@@ -92,6 +92,9 @@ namespace MCForge
                             case "public":
                                 Server.pub = (value.ToLower() == "true") ? true : false;
                                 break;
+                            case "CTF":
+                                Server.RunCTF = (value.ToLower() == "true") ? true : false;
+                                break;
                             case "world-chat":
                                 Server.worldChat = (value.ToLower() == "true") ? true : false;
                                 break;

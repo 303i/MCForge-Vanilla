@@ -148,6 +148,7 @@ public static event OnServerError ServerError = null;
         public static string nextLevel = "";
         public static int YesVotes = 0;
         public static int NoVotes = 0;
+        public static bool RunCTF = false;
         public static bool voting = false;
         public static bool votingforlevel = false;
         public static int YesLevelVotes = 0;
@@ -826,8 +827,9 @@ processThread.Start();
                 }
                 catch { }
                 //TODO Add GUI button to start or something
-                //DEBUG MUST REMOVE BEFORE RELEASE!!!!
-                Auto_CTF ctf = new Auto_CTF();
+                Auto_CTF ctf;
+                if (RunCTF)
+                    ctf = new Auto_CTF();
                 Log("Finished setting up server");
             });
             if (startZombieModeOnStartup)
