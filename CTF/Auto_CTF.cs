@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 
 namespace MCForge
 {
@@ -154,7 +155,27 @@ namespace MCForge
             Player.PlayerChat += new Player.OnPlayerChat(Player_PlayerChat);
             Player.PlayerCommand += new Player.OnPlayerCommand(Player_PlayerCommand);
             Player.PlayerBlockChange += new Player.BlockchangeEventHandler2(Player_PlayerBlockChange);
+            Player.PlayerDisconnect += new Player.OnPlayerDisconnect(Player_PlayerDisconnect);
             mainlevel.LevelUnload += new Level.OnLevelUnload(mainlevel_LevelUnload);
+        }
+
+        void Player_PlayerDisconnect(Player p, string reason)
+        {
+            if (p.level == mainlevel)
+            {
+                if (blueteam.members.Contains(p))
+                {
+                    //cache.Remove(GetPlayer(p));
+                    blueteam.members.Remove(p);
+                    Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + blueteam.color + "left the ctf game");
+                }
+                else if (redteam.members.Contains(p))
+                {
+                    //cache.Remove(GetPlayer(p));
+                    redteam.members.Remove(p);
+                    Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + redteam.color + "left the ctf game");
+                }
+            }
         }
 
         void mainlevel_LevelUnload(Level l)
@@ -168,6 +189,11 @@ namespace MCForge
         }
         public void Start()
         {
+            if (Level.Find("ctf") != null)
+            {
+                Command.all.Find("unload").Use(null, "ctf");
+                Thread.Sleep(1000);
+            }
             if (started)
                 return;
             blueteam = new Team("blue");
@@ -175,20 +201,32 @@ namespace MCForge
             LoadMap(maps[new Random().Next(maps.Count)]);
             if (look)
             {
-                foreach (byte b in mainlevel.blocks)
+                for (ushort x = 0; x < mainlevel.width; x++)
                 {
-                    if (mainlevel.GetTile(b) == Block.red)
-                        mainlevel.IntToPos(b, out redbase.x, out redbase.y, out redbase.z);
-                    else if (mainlevel.GetTile(b) == Block.blue)
-                        mainlevel.IntToPos(b, out bluebase.x, out bluebase.y, out bluebase.z);
+                    for (ushort y = 0; y < mainlevel.depth; y++)
+                    {
+                        for (ushort z = 0; z < mainlevel.height; z++)
+                        {
+                            if (mainlevel.GetTile(x, y, z) == Block.red)
+                            {
+                                redbase.x = x; redbase.y = y; redbase.z = z;
+                            }
+                            else if (mainlevel.GetTile(x, y, z) == Block.blue)
+                            {
+                                bluebase.x = x; bluebase.y = y; bluebase.z = z;
+                            }
+                        }
+                    }
                 }
                 zline = mainlevel.height / 2;
             }
+            Server.s.Log("[Auto_CTF] Running...");
             started = true;
             MySQL.executeQuery("CREATE TABLE if not exists CTF (ID MEDIUMINT not null auto_increment, Name VARCHAR(20), Points MEDIUMINT UNSIGNED, Captures MEDIUMINT UNSIGNED, tags MEDIUMINT UNSIGNED, PRIMARY KEY (ID));");
         }
         void End()
         {
+            started = false;
             string winner = "";
             Team winnerteam = null;
             if (blueteam.points >= maxpoints || blueteam.points > redteam.points)
@@ -207,6 +245,7 @@ namespace MCForge
                 //Vote();
             }
             Player.GlobalMessageLevel(mainlevel, "The winner was " + winnerteam.color + winner + "!!");
+            Thread.Sleep(4000);
             //MYSQL!
             cache.ForEach(delegate(Data d)
             {
@@ -215,10 +254,18 @@ namespace MCForge
                ", Captures=" + d.cap +
                ", tags=" + d.tag +
                "' WHERE Name='" + d.p.name + "'";
-
+                d.hasflag = false;
                 MySQL.executeQuery(commandString);
             });
             //Vote();
+            Player.GlobalMessageLevel(mainlevel, "Starting a new game!");
+            redbase = null;
+            redteam = null;
+            bluebase = null;
+            blueteam = null;
+            bluebase = new Base();
+            redbase = new Base();
+            Thread.Sleep(2000);
         }
         void Player_PlayerBlockChange(Player p, ushort x, ushort y, ushort z, byte type)
         {
@@ -250,6 +297,11 @@ namespace MCForge
                     mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
                     Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
+                    if (blueteam.points >= maxpoints)
+                    {
+                        End();
+                        Start();
+                    }
                 }
                 else
                 {
@@ -270,6 +322,11 @@ namespace MCForge
                     mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
                     Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
+                    if (redteam.points >= maxpoints)
+                    {
+                        End();
+                        Start();
+                    }
                 }
                 else
                 {
@@ -314,28 +371,52 @@ namespace MCForge
                 {
                     if (blueteam.members.Count > redteam.members.Count)
                     {
-                        cache.Add(new Data(false, p));
+                        if (GetPlayer(p) == null)
+                            cache.Add(new Data(false, p));
+                        else
+                        {
+                            GetPlayer(p).hasflag = false;
+                            GetPlayer(p).blue = false;
+                        }
                         redteam.Add(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
                         Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
                     }
                     else if (redteam.members.Count > blueteam.members.Count)
                     {
-                        cache.Add(new Data(true, p));
+                        if (GetPlayer(p) == null)
+                            cache.Add(new Data(true, p));
+                        else
+                        {
+                            GetPlayer(p).hasflag = false;
+                            GetPlayer(p).blue = true;
+                        }
                         blueteam.Add(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
                         Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
                     }
                     else if (new Random().Next(2) == 0)
                     {
-                        cache.Add(new Data(false, p));
+                        if (GetPlayer(p) == null)
+                            cache.Add(new Data(false, p));
+                        else
+                        {
+                            GetPlayer(p).hasflag = false;
+                            GetPlayer(p).blue = false;
+                        }
                         redteam.Add(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
                         Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
                     }
                     else
                     {
-                        cache.Add(new Data(true, p));
+                        if (GetPlayer(p) == null)
+                            cache.Add(new Data(true, p));
+                        else
+                        {
+                            GetPlayer(p).hasflag = false;
+                            GetPlayer(p).blue = true;
+                        }
                         blueteam.Add(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
                         Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
@@ -345,13 +426,13 @@ namespace MCForge
                 {
                     if (blueteam.members.Contains(p))
                     {
-                        cache.Remove(GetPlayer(p));
+                        //cache.Remove(GetPlayer(p));
                         blueteam.members.Remove(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + blueteam.color + "left the ctf game");
                     }
                     else if (redteam.members.Contains(p))
                     {
-                        cache.Remove(GetPlayer(p));
+                        //cache.Remove(GetPlayer(p));
                         redteam.members.Remove(p);
                         Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + redteam.color + "left the ctf game");
                     }
@@ -409,18 +490,18 @@ namespace MCForge
         }
         bool OnSide(ushort z, Base b)
         {
-            if (b.z < zline && z < zline)
+            if (b.z < zline && z / 32 < zline)
                 return true;
-            else if (b.z > zline && z > zline)
+            else if (b.z > zline && z / 32 > zline)
                 return true;
             else
                 return false;
         }
         bool OnSide(Player p, Base b)
         {
-            if (b.z < zline && p.pos[2] < zline)
+            if (b.z < zline && p.pos[2] / 32 < zline)
                 return true;
-            else if (b.z > zline && p.pos[2] > zline)
+            else if (b.z > zline && p.pos[2] / 32 > zline)
                 return true;
             else
                 return false;
@@ -433,18 +514,18 @@ namespace MCForge
                 {
                     foreach (Player p1 in redteam.members)
                     {
-                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] / 32 - z) < 2)
+                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] - z) < 2)
                         {
                             Player.SendMessage(p1, p.color + p.name + Server.DefaultColor + " tagged you!");
                             Random rand = new Random();
-                            ushort xx = (ushort)(rand.Next(0, mainlevel.width));
-                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth));
-                            ushort zz = (ushort)(rand.Next(0, mainlevel.height));
-                            while (mainlevel.GetTile(xx, yy, zz) != Block.air && OnSide(zz, redbase))
+                            ushort xx = (ushort)(rand.Next(0, mainlevel.width * 32));
+                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
+                            ushort zz = (ushort)(rand.Next(0, mainlevel.height * 32));
+                            while (mainlevel.GetTile((ushort)(xx / 32), (ushort)(yy / 32), (ushort)(zz / 32)) != Block.air && OnSide(zz, redbase))
                             {
-                                xx = (ushort)(rand.Next(0, mainlevel.width));
-                                yy = (ushort)(rand.Next(0, mainlevel.depth));
-                                zz = (ushort)(rand.Next(0, mainlevel.height));
+                                xx = (ushort)(rand.Next(0, mainlevel.width * 32));
+                                yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
+                                zz = (ushort)(rand.Next(0, mainlevel.height * 32));
                             }
                             p1.SendPos(0, xx, yy, zz, p1.rot[0], p1.rot[1]);
                             if (GetPlayer(p1).hasflag)
@@ -464,18 +545,18 @@ namespace MCForge
                 {
                     foreach (Player p1 in blueteam.members)
                     {
-                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] / 32 - z) < 2)
+                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] - z) < 2)
                         {
                             Player.SendMessage(p1, p.color + p.name + Server.DefaultColor + " tagged you!");
                             Random rand = new Random();
-                            ushort xx = (ushort)(rand.Next(0, mainlevel.width));
-                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth));
-                            ushort zz = (ushort)(rand.Next(0, mainlevel.height));
-                            while (mainlevel.GetTile(xx, yy, zz) != Block.air && OnSide(zz, bluebase))
+                            ushort xx = (ushort)(rand.Next(0, mainlevel.width * 32));
+                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
+                            ushort zz = (ushort)(rand.Next(0, mainlevel.height * 32));
+                            while (mainlevel.GetTile((ushort)(xx / 32), (ushort)(yy / 32), (ushort)(zz / 32)) != Block.air && OnSide(zz, bluebase))
                             {
-                                xx = (ushort)(rand.Next(0, mainlevel.width));
-                                yy = (ushort)(rand.Next(0, mainlevel.depth));
-                                zz = (ushort)(rand.Next(0, mainlevel.height));
+                                xx = (ushort)(rand.Next(0, mainlevel.width * 32));
+                                yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
+                                zz = (ushort)(rand.Next(0, mainlevel.height * 32));
                             }
                             p1.SendPos(0, xx, yy, zz, p1.rot[0], p1.rot[1]);
                             if (GetPlayer(p1).hasflag)
