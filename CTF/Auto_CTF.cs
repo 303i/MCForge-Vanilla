@@ -499,9 +499,9 @@ namespace MCForge
         }
         bool OnSide(Player p, Base b)
         {
-            if (b.z < zline && p.pos[2] / 32 < zline)
+            if (b.z < zline && p.pos[3] / 32 < zline)
                 return true;
-            else if (b.z > zline && p.pos[2] / 32 > zline)
+            else if (b.z > zline && p.pos[3] / 32 > zline)
                 return true;
             else
                 return false;

@@ -161,7 +161,6 @@ namespace MCForge
             name = n;
             blocks = new byte[width * depth * height];
             ZoneList = new List<Zone>();
-
             ushort half = (ushort)(depth / 2);
             switch (type)
             {
@@ -201,7 +200,6 @@ namespace MCForge
                 case "desert":
                     Server.MapGen.GenerateMap(this, type, seed, useSeed);
                     break;
-
                 default:
                     break;
             }
@@ -210,6 +208,7 @@ namespace MCForge
             spawny = (ushort)(depth * 0.75f);
             spawnz = (ushort)(height / 2);
             rotx = 0; roty = 0;
+            season = new SeasonsCore(this);
         }
 
         public void CopyBlocks(byte[] source, int offset)
