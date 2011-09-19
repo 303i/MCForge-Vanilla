@@ -35,6 +35,7 @@ namespace MCForge
         public int points = 0;
         public bool hasflag;
         public bool blue;
+        public bool tagging = false;
         public bool chatting = false;
         public Data(bool team, Player p)
         {
@@ -57,6 +58,7 @@ namespace MCForge
     }
     public class Auto_CTF
     {
+        public System.Timers.Timer tagging = new System.Timers.Timer(500);
         public int xline;
         public bool started = false;
         public int zline;
@@ -150,13 +152,74 @@ namespace MCForge
             bluebase = new Base();
             Start();
             //Lets get started
-            Player.PlayerMove += new Player.OnPlayerMove(Player_PlayerMove);
             Player.PlayerDeath += new Player.OnPlayerDeath(Player_PlayerDeath);
             Player.PlayerChat += new Player.OnPlayerChat(Player_PlayerChat);
             Player.PlayerCommand += new Player.OnPlayerCommand(Player_PlayerCommand);
             Player.PlayerBlockChange += new Player.BlockchangeEventHandler2(Player_PlayerBlockChange);
             Player.PlayerDisconnect += new Player.OnPlayerDisconnect(Player_PlayerDisconnect);
             mainlevel.LevelUnload += new Level.OnLevelUnload(mainlevel_LevelUnload);
+            tagging.Elapsed += new System.Timers.ElapsedEventHandler(tagging_Elapsed);
+            tagging.Start();
+        }
+
+        void tagging_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            Player.players.ForEach(delegate(Player p)
+            {
+                if (p.level == mainlevel)
+                {
+                    ushort x = p.pos[0];
+                    ushort y = p.pos[1];
+                    ushort z = p.pos[2];
+                    Base b = null;
+                    if (redteam.members.Contains(p))
+                        b = redbase;
+                    else if (blueteam.members.Contains(p))
+                        b = bluebase;
+                    else
+                        return;
+                    if (GetPlayer(p).tagging)
+                        return;
+                    if (OnSide(p, b))
+                    {
+                        List<Player> temp = redteam.members;
+                        if (redteam.members.Contains(p))
+                            temp = blueteam.members;
+                        foreach (Player p1 in temp)
+                        {
+                            if (Math.Abs((p1.pos[0] / 32) - (x / 32)) < 5 && Math.Abs((p1.pos[1] / 32) - (y / 32)) < 5 && Math.Abs((p1.pos[2] / 32) - (z / 32)) < 5 && !GetPlayer(p).tagging)
+                            {
+                                GetPlayer(p1).tagging = true;
+                                Player.SendMessage(p1, p.color + p.name + Server.DefaultColor + " tagged you!");
+                                Random rand = new Random();
+                                ushort xx = (ushort)(rand.Next(0, mainlevel.width));
+                                ushort yy = (ushort)(rand.Next(0, mainlevel.depth));
+                                ushort zz = (ushort)(rand.Next(0, mainlevel.height));
+                                while (mainlevel.GetTile(xx, yy, zz) != Block.air && OnSide((ushort)(zz * 32), b))
+                                {
+                                    xx = (ushort)(rand.Next(0, mainlevel.width));
+                                    yy = (ushort)(rand.Next(0, mainlevel.depth));
+                                    zz = (ushort)(rand.Next(0, mainlevel.height));
+                                }
+                                unchecked { p1.SendPos((byte)-1, (ushort)(xx * 32), (ushort)(yy * 32), (ushort)(zz * 32), p1.rot[0], p1.rot[1]); }
+                                Thread.Sleep(300);
+                                if (GetPlayer(p1).hasflag)
+                                {
+                                    Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " DROPPED THE FLAG!");
+                                    GetPlayer(p1).points -= caplose;
+                                    mainlevel.Blockchange(b.x, b.y, b.z, b.block);
+                                    GetPlayer(p1).hasflag = false;
+                                }
+                                GetPlayer(p).points += tagpoint;
+                                GetPlayer(p1).points -= taglose;
+                                GetPlayer(p).tag++;
+                                GetPlayer(p1).tagging = false;
+                            }
+                        }
+                    }
+                }
+                Thread.Sleep(100);
+            });
         }
 
         void Player_PlayerDisconnect(Player p, string reason)
@@ -220,6 +283,8 @@ namespace MCForge
                 }
                 zline = mainlevel.height / 2;
             }
+            redbase.block = Block.red;
+            bluebase.block = Block.blue;
             Server.s.Log("[Auto_CTF] Running...");
             started = true;
             MySQL.executeQuery("CREATE TABLE if not exists CTF (ID MEDIUMINT not null auto_increment, Name VARCHAR(20), Points MEDIUMINT UNSIGNED, Captures MEDIUMINT UNSIGNED, tags MEDIUMINT UNSIGNED, PRIMARY KEY (ID));");
@@ -499,80 +564,12 @@ namespace MCForge
         }
         bool OnSide(Player p, Base b)
         {
-            if (b.z < zline && p.pos[3] / 32 < zline)
+            if (b.z < zline && p.pos[2] / 32 < zline)
                 return true;
-            else if (b.z > zline && p.pos[3] / 32 > zline)
+            else if (b.z > zline && p.pos[2] / 32 > zline)
                 return true;
             else
                 return false;
-        }
-        void Player_PlayerMove(Player p, ushort x, ushort y, ushort z)
-        {
-            if (p.level == mainlevel)
-            {
-                if (blueteam.members.Contains(p) && OnSide(p, bluebase))
-                {
-                    foreach (Player p1 in redteam.members)
-                    {
-                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] - z) < 2)
-                        {
-                            Player.SendMessage(p1, p.color + p.name + Server.DefaultColor + " tagged you!");
-                            Random rand = new Random();
-                            ushort xx = (ushort)(rand.Next(0, mainlevel.width * 32));
-                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
-                            ushort zz = (ushort)(rand.Next(0, mainlevel.height * 32));
-                            while (mainlevel.GetTile((ushort)(xx / 32), (ushort)(yy / 32), (ushort)(zz / 32)) != Block.air && OnSide(zz, redbase))
-                            {
-                                xx = (ushort)(rand.Next(0, mainlevel.width * 32));
-                                yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
-                                zz = (ushort)(rand.Next(0, mainlevel.height * 32));
-                            }
-                            p1.SendPos(0, xx, yy, zz, p1.rot[0], p1.rot[1]);
-                            if (GetPlayer(p1).hasflag)
-                            {
-                                Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " DROPPED THE FLAG!");
-                                GetPlayer(p1).points -= caplose;
-                                mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
-                                GetPlayer(p).hasflag = false;
-                            }
-                            GetPlayer(p).points += tagpoint;
-                            GetPlayer(p1).points -= taglose;
-                            GetPlayer(p).tag++;
-                        }
-                    }
-                }
-                if (redteam.members.Contains(p) && OnSide(p, redbase))
-                {
-                    foreach (Player p1 in blueteam.members)
-                    {
-                        if (Math.Abs(p1.pos[0] - x) < 2 && Math.Abs(p1.pos[1] - y) < 2 && Math.Abs(p1.pos[2] - z) < 2)
-                        {
-                            Player.SendMessage(p1, p.color + p.name + Server.DefaultColor + " tagged you!");
-                            Random rand = new Random();
-                            ushort xx = (ushort)(rand.Next(0, mainlevel.width * 32));
-                            ushort yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
-                            ushort zz = (ushort)(rand.Next(0, mainlevel.height * 32));
-                            while (mainlevel.GetTile((ushort)(xx / 32), (ushort)(yy / 32), (ushort)(zz / 32)) != Block.air && OnSide(zz, bluebase))
-                            {
-                                xx = (ushort)(rand.Next(0, mainlevel.width * 32));
-                                yy = (ushort)(rand.Next(0, mainlevel.depth * 32));
-                                zz = (ushort)(rand.Next(0, mainlevel.height * 32));
-                            }
-                            p1.SendPos(0, xx, yy, zz, p1.rot[0], p1.rot[1]);
-                            if (GetPlayer(p1).hasflag)
-                            {
-                                Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " DROPPED THE FLAG!");
-                                GetPlayer(p1).points -= caplose;
-                                mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
-                                GetPlayer(p).hasflag = false;
-                            }
-                            GetPlayer(p).points += tagpoint;
-                            GetPlayer(p1).points -= taglose;
-                            GetPlayer(p).tag++;
-                        }
-                    }
-                }
-            }
         }
     }
 }
