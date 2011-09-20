@@ -419,7 +419,7 @@ namespace MCForge
                         if (blueteam.points >= maxpoints)
                         {
                             End();
-                            Start();
+                            return;
                         }
                     }
                     else
@@ -444,7 +444,7 @@ namespace MCForge
                         if (redteam.points >= maxpoints)
                         {
                             End();
-                            Start();
+                            return;
                         }
                     }
                     else
