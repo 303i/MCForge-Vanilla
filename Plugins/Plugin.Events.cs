@@ -20,94 +20,82 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace MCForge.Plugins
+namespace MCForge
 {
 	public partial class Plugin
 	{
 
         /// <summary>
-        /// Check to see if a player event is stopped
+        /// Check to see if a Player event is stopped
         /// </summary>
         /// <param name="e">The event to check</param>
         /// <param name="p">The Player that event is related to</param>
         /// <returns>This returns true or false, true means its stopped, false means its not</returns>
-        public static bool IsPlayerEventCancled(Events e, Player p)
+        public static bool IsPlayerEventCancled(PlayerEvents e, Player p)
         {
             switch (e)
             {
-                case Events.BlockChange:
+                case PlayerEvents.BlockChange:
                     return p.cancelBlock;
-                case Events.PlayerChat:
+                case PlayerEvents.PlayerChat:
                     return p.cancelchat;
-                case Events.PlayerCommand:
+                case PlayerEvents.PlayerCommand:
                     return p.cancelcommand;
-                case Events.PlayerMove:
+                case PlayerEvents.PlayerMove:
                     return p.cancelmove;
                 default:
                     return false;
             }
         }
         /// <summary>
-        /// Cancel a global Level Event!
-        /// Events.LevelLoad
-        /// Events.LevelSave
+        /// Cancel Level event
         /// </summary>
-        /// <param name="e">The event that you want to cancel</param>
-        public static void CancelGlobalLevelEvent(Events e)
+        /// <param name="e">The event to cancel</param>
+        /// <param name="l">The level to cancel the event on</param>
+        public static void CancelLevelEvent(LevelEvents e, Level l)
         {
             switch (e)
             {
-                case Events.LevelLoad:
-                    Level.cancelload = true;
-                    break;
-                case Events.LevelSave:
-                    Level.cancelsave = true;
-                    break;
-                default:
+                case LevelEvents.LevelUnload:
                     break;
             }
         }
         /// <summary>
-        /// Cancel a Level Event
-        /// Events.LevelUnload
+        /// Cancel Global Level Event
         /// </summary>
         /// <param name="e">The event you want to cancel</param>
-        /// <param name="l">The level the event is related to</param>
-        public static void CancelLevelEvent(Events e, Level l)
+        public static void CancelGlobalLevelEvent(GlobalLevelEvents e)
         {
             switch (e)
             {
-                case Events.LevelUnload:
-                    l.cancelunload = true;
+                case GlobalLevelEvents.LevelLoad:
+                    Level.cancelload = true;
                     break;
-                default:
+                case GlobalLevelEvents.LevelSave:
+                    Level.cancelsave = true;
                     break;
             }
         }
         /// <summary>
-        /// Cancel a Player event
-        /// Events.BlockChange
-        /// Events.PlayerChat
-        /// Events.PlayerCommand
-        /// Events.PlayerMove
+        /// Cancel a player event
         /// </summary>
         /// <param name="e">The event that you want to cancel</param>
         /// <param name="p">The Player that event is related to</param>
-        public static void CancelPlayerEvent(Events e, Player p) {
+        public static void CancelPlayerEvent(PlayerEvents e, Player p) {
             //TODO
             //Add some more events to be canceled
             switch (e)
             {
-                case Events.BlockChange:
+                case PlayerEvents.BlockChange:
                     p.cancelBlock = true;
                     break;
-                case Events.PlayerChat:
+                case PlayerEvents.PlayerChat:
                     p.cancelchat = true;
                     break;
-                case Events.PlayerCommand:
+                case PlayerEvents.PlayerCommand:
                     p.cancelcommand = true;
                     break;
-                case Events.PlayerMove:
+                case PlayerEvents.PlayerMove:
                     p.cancelmove = true;
                     break;
             }

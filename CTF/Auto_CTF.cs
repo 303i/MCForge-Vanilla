@@ -59,6 +59,13 @@ namespace MCForge
     public class Auto_CTF
     {
         public System.Timers.Timer tagging = new System.Timers.Timer(500);
+        public bool voting = false;
+        int vote1 = 0;
+        int vote2 = 0;
+        int vote3 = 0;
+        string map1 = "";
+        string map2 = "";
+        string map3 = "";
         public int xline;
         public bool started = false;
         public int zline;
@@ -246,7 +253,7 @@ namespace MCForge
             if (started)
             {
                 Server.s.Log("Failed!, A ctf game is curretnly going on!");
-                Plugins.Plugin.CancelLevelEvent(Plugins.Events.LevelUnload, l);
+                Plugin.CancelLevelEvent(LevelEvents.LevelUnload, l);
             }
 
         }
@@ -289,9 +296,54 @@ namespace MCForge
             started = true;
             MySQL.executeQuery("CREATE TABLE if not exists CTF (ID MEDIUMINT not null auto_increment, Name VARCHAR(20), Points MEDIUMINT UNSIGNED, Captures MEDIUMINT UNSIGNED, tags MEDIUMINT UNSIGNED, PRIMARY KEY (ID));");
         }
+        string Vote()
+        {
+            started = false;
+            vote1 = 0;
+            vote2 = 0;
+            vote3 = 0;
+            Random rand = new Random();
+            List<string> maps1 = maps;
+            map1 = maps1[rand.Next(maps1.Count)];
+            maps1.Remove(map1);
+            map2 = maps1[rand.Next(maps1.Count)];
+            maps1.Remove(map2);
+            map3 = maps1[rand.Next(maps1.Count)];
+            Player.GlobalMessageLevel(mainlevel, "%2VOTE:");
+            Player.GlobalMessageLevel(mainlevel, "1. " + map1 + " 2. " + map2 + " 3. " + map3);
+            voting = true;
+            int seconds = rand.Next(15, 61);
+            Player.GlobalMessageLevel(mainlevel, "You have " + seconds + " seconds to vote!");
+            Thread.Sleep(seconds * 1000);
+            voting = false;
+            Player.GlobalMessageLevel(mainlevel, "VOTING ENDED!");
+            Thread.Sleep(rand.Next(1, 10) * 1000);
+            if (vote1 > vote2 && vote1 > vote3)
+            {
+                Player.GlobalMessageLevel(mainlevel, map1 + " WON!");
+                return map1;
+            }
+            if (vote2 > vote1 && vote2 > vote3)
+            {
+                Player.GlobalMessageLevel(mainlevel, map2 + " WON!");
+                return map2;
+            }
+            if (vote3 > vote2 && vote3 > vote1)
+            {
+                Player.GlobalMessageLevel(mainlevel, map3 + " WON!");
+                return map3;
+            }
+            else
+            {
+                Player.GlobalMessageLevel(mainlevel, "There was a tie!");
+                Player.GlobalMessageLevel(mainlevel, "I'll choose!");
+                return maps[rand.Next(maps.Count)];
+            }
+        }
         void End()
         {
             started = false;
+            string nextmap = "";
             string winner = "";
             Team winnerteam = null;
             if (blueteam.points >= maxpoints || blueteam.points > redteam.points)
@@ -307,7 +359,6 @@ namespace MCForge
             else
             {
                 Player.GlobalMessageLevel(mainlevel, "The game ended in a tie!");
-                //Vote();
             }
             Player.GlobalMessageLevel(mainlevel, "The winner was " + winnerteam.color + winner + "!!");
             Thread.Sleep(4000);
@@ -322,7 +373,7 @@ namespace MCForge
                 d.hasflag = false;
                 MySQL.executeQuery(commandString);
             });
-            //Vote();
+            nextmap = Vote();
             Player.GlobalMessageLevel(mainlevel, "Starting a new game!");
             redbase = null;
             redteam = null;
@@ -331,73 +382,77 @@ namespace MCForge
             bluebase = new Base();
             redbase = new Base();
             Thread.Sleep(2000);
+            LoadMap(nextmap);
         }
         void Player_PlayerBlockChange(Player p, ushort x, ushort y, ushort z, byte type)
         {
-            if (p.level == mainlevel && !blueteam.members.Contains(p) && !redteam.members.Contains(p))
+            if (started)
             {
-                p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                Player.SendMessage(p, "You are not on a team!");
-                Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
-            }
-            if (p.level == mainlevel && blueteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
-            {
-                Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " took the " + redteam.color + " red team's FLAG!");
-                GetPlayer(p).hasflag = true;
-            }
-            if (p.level == mainlevel && redteam.members.Contains(p) && x == bluebase.x && y == bluebase.y && z == bluebase.z && mainlevel.GetTile(bluebase.x, bluebase.y, bluebase.z) != Block.air)
-            {
-                Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " took the " + blueteam.color + " blue team's FLAG");
-                GetPlayer(p).hasflag = true;
-            }
-            if (p.level == mainlevel && blueteam.members.Contains(p) && x == bluebase.x && y == bluebase.y && z == bluebase.z && mainlevel.GetTile(bluebase.x, bluebase.y, bluebase.z) != Block.air)
-            {
-                if (GetPlayer(p).hasflag)
+                if (p.level == mainlevel && !blueteam.members.Contains(p) && !redteam.members.Contains(p))
                 {
-                    Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " RETURNED THE FLAG!");
-                    GetPlayer(p).hasflag = false;
-                    GetPlayer(p).cap++;
-                    GetPlayer(p).points += cappoint;
-                    blueteam.points++;
-                    mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
                     p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
-                    if (blueteam.points >= maxpoints)
+                    Player.SendMessage(p, "You are not on a team!");
+                    Plugin.CancelPlayerEvent(PlayerEvents.BlockChange, p);
+                }
+                if (p.level == mainlevel && blueteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
+                {
+                    Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " took the " + redteam.color + " red team's FLAG!");
+                    GetPlayer(p).hasflag = true;
+                }
+                if (p.level == mainlevel && redteam.members.Contains(p) && x == bluebase.x && y == bluebase.y && z == bluebase.z && mainlevel.GetTile(bluebase.x, bluebase.y, bluebase.z) != Block.air)
+                {
+                    Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " took the " + blueteam.color + " blue team's FLAG");
+                    GetPlayer(p).hasflag = true;
+                }
+                if (p.level == mainlevel && blueteam.members.Contains(p) && x == bluebase.x && y == bluebase.y && z == bluebase.z && mainlevel.GetTile(bluebase.x, bluebase.y, bluebase.z) != Block.air)
+                {
+                    if (GetPlayer(p).hasflag)
                     {
-                        End();
-                        Start();
+                        Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " RETURNED THE FLAG!");
+                        GetPlayer(p).hasflag = false;
+                        GetPlayer(p).cap++;
+                        GetPlayer(p).points += cappoint;
+                        blueteam.points++;
+                        mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
+                        p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
+                        Plugin.CancelPlayerEvent(PlayerEvents.BlockChange, p);
+                        if (blueteam.points >= maxpoints)
+                        {
+                            End();
+                            Start();
+                        }
+                    }
+                    else
+                    {
+                        Player.SendMessage(p, "You cant take your own flag!");
+                        p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
+                        Plugin.CancelPlayerEvent(PlayerEvents.BlockChange, p);
                     }
                 }
-                else
+                if (p.level == mainlevel && redteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
                 {
-                    Player.SendMessage(p, "You cant take your own flag!");
-                    p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
-                }
-            }
-            if (p.level == mainlevel && redteam.members.Contains(p) && x == redbase.x && y == redbase.y && z == redbase.z && mainlevel.GetTile(redbase.x, redbase.y, redbase.z) != Block.air)
-            {
-                if (GetPlayer(p).hasflag)
-                {
-                    Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " RETURNED THE FLAG!");
-                    GetPlayer(p).hasflag = false;
-                    GetPlayer(p).points += cappoint;
-                    GetPlayer(p).cap++;
-                    redteam.points++;
-                    mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
-                    p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
-                    if (redteam.points >= maxpoints)
+                    if (GetPlayer(p).hasflag)
                     {
-                        End();
-                        Start();
+                        Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " RETURNED THE FLAG!");
+                        GetPlayer(p).hasflag = false;
+                        GetPlayer(p).points += cappoint;
+                        GetPlayer(p).cap++;
+                        redteam.points++;
+                        mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
+                        p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
+                        Plugin.CancelPlayerEvent(PlayerEvents.BlockChange, p);
+                        if (redteam.points >= maxpoints)
+                        {
+                            End();
+                            Start();
+                        }
                     }
-                }
-                else
-                {
-                    Player.SendMessage(p, "You cant take your own flag!");
-                    p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
-                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.BlockChange, p);
+                    else
+                    {
+                        Player.SendMessage(p, "You cant take your own flag!");
+                        p.SendBlockchange(x, y, z, p.level.GetTile(x, y, z));
+                        Plugin.CancelPlayerEvent(PlayerEvents.BlockChange, p);
+                    }
                 }
             }
         }
@@ -412,144 +467,180 @@ namespace MCForge
         }
         void Player_PlayerCommand(string cmd, Player p, string message)
         {
-            if (cmd == "teamchat" && p.level == mainlevel)
+            if (started)
             {
-                if (GetPlayer(p) != null)
+                if (cmd == "teamchat" && p.level == mainlevel)
                 {
-                    Data d = GetPlayer(p);
-                    if (d.chatting)
+                    if (GetPlayer(p) != null)
                     {
-                        Player.SendMessage(d.p, "You are no longer chatting with your team!");
-                        d.chatting = !d.chatting;
-                    }
-                    else
-                    {
-                        Player.SendMessage(d.p, "You are now chatting with your team!");
-                        d.chatting = !d.chatting;
-                    }
-                    Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerCommand, p);
-                }
-            }
-            if (cmd == "goto")
-            {
-                if (message == "ctf" && p.level != mainlevel)
-                {
-                    if (blueteam.members.Count > redteam.members.Count)
-                    {
-                        if (GetPlayer(p) == null)
-                            cache.Add(new Data(false, p));
+                        Data d = GetPlayer(p);
+                        if (d.chatting)
+                        {
+                            Player.SendMessage(d.p, "You are no longer chatting with your team!");
+                            d.chatting = !d.chatting;
+                        }
                         else
                         {
-                            GetPlayer(p).hasflag = false;
-                            GetPlayer(p).blue = false;
+                            Player.SendMessage(d.p, "You are now chatting with your team!");
+                            d.chatting = !d.chatting;
                         }
-                        redteam.Add(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
-                        Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
-                    }
-                    else if (redteam.members.Count > blueteam.members.Count)
-                    {
-                        if (GetPlayer(p) == null)
-                            cache.Add(new Data(true, p));
-                        else
-                        {
-                            GetPlayer(p).hasflag = false;
-                            GetPlayer(p).blue = true;
-                        }
-                        blueteam.Add(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
-                        Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
-                    }
-                    else if (new Random().Next(2) == 0)
-                    {
-                        if (GetPlayer(p) == null)
-                            cache.Add(new Data(false, p));
-                        else
-                        {
-                            GetPlayer(p).hasflag = false;
-                            GetPlayer(p).blue = false;
-                        }
-                        redteam.Add(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
-                        Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
-                    }
-                    else
-                    {
-                        if (GetPlayer(p) == null)
-                            cache.Add(new Data(true, p));
-                        else
-                        {
-                            GetPlayer(p).hasflag = false;
-                            GetPlayer(p).blue = true;
-                        }
-                        blueteam.Add(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
-                        Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
+                        Plugin.CancelPlayerEvent(PlayerEvents.PlayerCommand, p);
                     }
                 }
-                else if (message != "ctf" && p.level == mainlevel)
+                if (cmd == "goto")
                 {
-                    if (blueteam.members.Contains(p))
+                    if (message == "ctf" && p.level != mainlevel)
                     {
-                        //cache.Remove(GetPlayer(p));
-                        blueteam.members.Remove(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + blueteam.color + "left the ctf game");
+                        if (blueteam.members.Count > redteam.members.Count)
+                        {
+                            if (GetPlayer(p) == null)
+                                cache.Add(new Data(false, p));
+                            else
+                            {
+                                GetPlayer(p).hasflag = false;
+                                GetPlayer(p).blue = false;
+                            }
+                            redteam.Add(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
+                            Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
+                        }
+                        else if (redteam.members.Count > blueteam.members.Count)
+                        {
+                            if (GetPlayer(p) == null)
+                                cache.Add(new Data(true, p));
+                            else
+                            {
+                                GetPlayer(p).hasflag = false;
+                                GetPlayer(p).blue = true;
+                            }
+                            blueteam.Add(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
+                            Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
+                        }
+                        else if (new Random().Next(2) == 0)
+                        {
+                            if (GetPlayer(p) == null)
+                                cache.Add(new Data(false, p));
+                            else
+                            {
+                                GetPlayer(p).hasflag = false;
+                                GetPlayer(p).blue = false;
+                            }
+                            redteam.Add(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("red") + "joined the RED Team");
+                            Player.SendMessage(p, c.Parse("red") + "You are now on the red team!");
+                        }
+                        else
+                        {
+                            if (GetPlayer(p) == null)
+                                cache.Add(new Data(true, p));
+                            else
+                            {
+                                GetPlayer(p).hasflag = false;
+                                GetPlayer(p).blue = true;
+                            }
+                            blueteam.Add(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + c.Parse("blue") + "joined the BLUE Team");
+                            Player.SendMessage(p, c.Parse("blue") + "You are now on the blue team!");
+                        }
                     }
-                    else if (redteam.members.Contains(p))
+                    else if (message != "ctf" && p.level == mainlevel)
                     {
-                        //cache.Remove(GetPlayer(p));
-                        redteam.members.Remove(p);
-                        Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + redteam.color + "left the ctf game");
+                        if (blueteam.members.Contains(p))
+                        {
+                            //cache.Remove(GetPlayer(p));
+                            blueteam.members.Remove(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + blueteam.color + "left the ctf game");
+                        }
+                        else if (redteam.members.Contains(p))
+                        {
+                            //cache.Remove(GetPlayer(p));
+                            redteam.members.Remove(p);
+                            Player.GlobalMessageLevel(mainlevel, p.color + p.name + " " + redteam.color + "left the ctf game");
+                        }
                     }
                 }
             }
         }
         void Player_PlayerChat(Player p, string message)
         {
-            if (p.level == mainlevel)
+            if (voting)
             {
-                if (GetPlayer(p).chatting)
+                if (message == "1" || message.ToLower() == map1)
                 {
-                    if (blueteam.members.Contains(p))
+                    Player.SendMessage(p, "Thanks for voting :D");
+                    vote1++;
+                    Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                }
+                else if (message == "2" || message.ToLower() == map2)
+                {
+                    Player.SendMessage(p, "Thanks for voting :D");
+                    vote2++;
+                    Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                }
+                else if (message == "3" || message.ToLower() == map3)
+                {
+                    Player.SendMessage(p, "Thanks for voting :D");
+                    vote3++;
+                    Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                }
+                else
+                {
+                    Player.SendMessage(p, "%2VOTE:");
+                    Player.SendMessage(p, "1. " + map1 + " 2. " + map2 + " 3. " + map3);
+                    Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                }
+            }
+            if (started)
+            {
+                if (p.level == mainlevel)
+                {
+                    if (GetPlayer(p).chatting)
                     {
-                        Player.players.ForEach(delegate(Player p1)
+                        if (blueteam.members.Contains(p))
                         {
-                            if (blueteam.members.Contains(p1))
-                                Player.SendMessage(p1, blueteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.Parse("white") + message);
-                        });
-                        Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerChat, p);
-                    }
-                    if (redteam.members.Contains(p))
-                    {
-                        Player.players.ForEach(delegate(Player p1)
+                            Player.players.ForEach(delegate(Player p1)
+                            {
+                                if (blueteam.members.Contains(p1))
+                                    Player.SendMessage(p1, blueteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.Parse("white") + message);
+                            });
+                            Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                        }
+                        if (redteam.members.Contains(p))
                         {
-                            if (redteam.members.Contains(p1))
-                                Player.SendMessage(p1, redteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.white + message);
-                        });
-                        Plugins.Plugin.CancelPlayerEvent(Plugins.Events.PlayerChat, p);
+                            Player.players.ForEach(delegate(Player p1)
+                            {
+                                if (redteam.members.Contains(p1))
+                                    Player.SendMessage(p1, redteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.white + message);
+                            });
+                            Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
+                        }
                     }
                 }
             }
         }
         void Player_PlayerDeath(Player p, byte deathblock)
         {
-            if (p.level == mainlevel)
+            if (started)
             {
-                if (GetPlayer(p).hasflag)
+                if (p.level == mainlevel)
                 {
-                    if (redteam.members.Contains(p))
+                    if (GetPlayer(p).hasflag)
                     {
-                        Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " DROPPED THE FLAG!");
-                        GetPlayer(p).points -= caplose;
-                        mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
+                        if (redteam.members.Contains(p))
+                        {
+                            Player.GlobalMessageLevel(mainlevel, redteam.color + p.name + " DROPPED THE FLAG!");
+                            GetPlayer(p).points -= caplose;
+                            mainlevel.Blockchange(redbase.x, redbase.y, redbase.z, Block.red);
+                        }
+                        else if (blueteam.members.Contains(p))
+                        {
+                            Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " DROPPED THE FLAG!");
+                            GetPlayer(p).points -= caplose;
+                            mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
+                        }
+                        GetPlayer(p).hasflag = false;
                     }
-                    else if (blueteam.members.Contains(p))
-                    {
-                        Player.GlobalMessageLevel(mainlevel, blueteam.color + p.name + " DROPPED THE FLAG!");
-                        GetPlayer(p).points -= caplose;
-                        mainlevel.Blockchange(bluebase.x, bluebase.y, bluebase.z, Block.blue);
-                    }
-                    GetPlayer(p).hasflag = false;
                 }
             }
         }
