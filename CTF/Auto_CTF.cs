@@ -5,12 +5,12 @@ using System.Threading;
 
 namespace MCForge
 {
-    public class Team
+    public class Teams
     {
         public string color;
         public int points = 0;
         public List<Player> members;
-        public Team(string color)
+        public Teams(string color)
         {
             this.color = c.Parse(color);
             members = new List<Player>();
@@ -48,7 +48,7 @@ namespace MCForge
         public ushort y;
         public ushort z;
         public byte block;
-        public Base(ushort x, ushort y, ushort z, Team team)
+        public Base(ushort x, ushort y, ushort z, Teams team)
         {
             this.x = x; this.y = y; this.z = z;
         }
@@ -76,8 +76,8 @@ namespace MCForge
         int caplose = 10;
         bool look = false;
         public int maxpoints = 3;
-        Team redteam;
-        Team blueteam;
+        Teams redteam;
+        Teams blueteam;
         Base bluebase;
         Base redbase;
         Level mainlevel;
@@ -266,8 +266,8 @@ namespace MCForge
             }
             if (started)
                 return;
-            blueteam = new Team("blue");
-            redteam = new Team("red");
+            blueteam = new Teams("blue");
+            redteam = new Teams("red");
             LoadMap(maps[new Random().Next(maps.Count)]);
             if (look)
             {
@@ -345,7 +345,7 @@ namespace MCForge
             started = false;
             string nextmap = "";
             string winner = "";
-            Team winnerteam = null;
+            Teams winnerteam = null;
             if (blueteam.points >= maxpoints || blueteam.points > redteam.points)
             {
                 winnerteam = blueteam;
@@ -602,7 +602,7 @@ namespace MCForge
                             Player.players.ForEach(delegate(Player p1)
                             {
                                 if (blueteam.members.Contains(p1))
-                                    Player.SendMessage(p1, blueteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.Parse("white") + message);
+                                    Player.SendMessage(p1, "(Blue) " + p.color + p.name + ":&f " + message);
                             });
                             Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
                         }
@@ -611,7 +611,7 @@ namespace MCForge
                             Player.players.ForEach(delegate(Player p1)
                             {
                                 if (redteam.members.Contains(p1))
-                                    Player.SendMessage(p1, redteam.color + "<Team-Chat>" + p.color + p.name + ": " + c.white + message);
+                                    Player.SendMessage(p1, "(Red) " + p.color + p.name + ":&f " + message);
                             });
                             Plugin.CancelPlayerEvent(PlayerEvents.PlayerChat, p);
                         }
