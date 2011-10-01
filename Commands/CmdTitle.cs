@@ -61,7 +61,8 @@ namespace MCForge
                 if (newTitle.Trim()[newTitle.Trim().Length - 1].ToString() != "]") newTitle = newTitle.Trim() + "]";
                 if (newTitle[newTitle.Length - 1].ToString() != " ") newTitle = newTitle + " "; */
             }
-
+            if (newTitle.Contains ("Console") || (newTitle.Contains("Console") && newTitle.ToLower().Contains("%"))) { Player.SendMessage(p, "Can't let you do that, starfox."); return; }
+            if (newTitle.Contains ("console") || (newTitle.Contains("console") && newTitle.ToLower().Contains("%"))) { Player.SendMessage(p, "Can't let you do that, starfox."); return; }
             if (newTitle.Length > 17) { Player.SendMessage(p, "Title must be under 17 letters."); return; }
             if (p != null && !Server.devs.Contains(p.name))
             {
